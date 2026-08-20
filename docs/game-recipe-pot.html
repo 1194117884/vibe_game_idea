@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>配菜锅 · GAME RECIPE POT</title>
+<style>
+  :root{
+    --bg:#06090f; --bg2:#0a0f1a; --panel:#0d1524; --panel2:#111c30;
+    --line:#1c2a44; --line2:#24365c;
+    --ink:#e6f1ff; --muted:#8aa0c0; --dim:#5b6f8f;
+    --cyan:#22d3ee; --magenta:#ff2d95; --green:#39ff88; --amber:#ffb020;
+    --purple:#a06bff; --orange:#ff6b35; --red:#ff5470;
+    --glow-cyan:0 0 12px rgba(34,211,238,.55);
+    --font-ui:'Segoe UI', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    --font-pixel:'Courier New', Consolas, 'Lucida Console', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--font-ui); background:var(--bg); color:var(--ink);
+    overflow:hidden;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 1px, transparent 1px 3px),
+      radial-gradient(1200px 700px at 70% -10%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(1000px 600px at 10% 110%, rgba(255,45,149,.08), transparent 60%);
+  }
+  .wrap{position:relative; z-index:1; height:100vh; display:flex; flex-direction:column;}
+
+  /* ===== Top bar ===== */
+  header{
+    display:flex; align-items:center; gap:16px; padding:14px 20px;
+    border-bottom:1px solid var(--line); background:linear-gradient(180deg, rgba(17,28,48,.9), rgba(10,15,26,.7));
+    backdrop-filter:blur(6px);
+  }
+  .logo{
+    font-family:var(--font-pixel); font-size:13px; letter-spacing:1px;
+    background:linear-gradient(90deg,var(--cyan),var(--magenta));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:none; filter:drop-shadow(0 0 8px rgba(34,211,238,.4));
+    white-space:nowrap;
+  }
+  .logo small{display:block; font-size:8px; color:var(--muted); margin-top:6px; letter-spacing:2px;}
+  .toolbar{margin-left:auto; display:flex; gap:10px; align-items:center;}
+  .btn{
+    font-family:var(--font-ui); font-weight:600; font-size:13px; cursor:pointer;
+    padding:9px 14px; border-radius:8px; border:1px solid var(--line2);
+    background:var(--panel2); color:var(--ink); transition:.15s;
+  }
+  .btn:hover{border-color:var(--cyan); box-shadow:var(--glow-cyan); transform:translateY(-1px);}
+  .btn.primary{
+    background:linear-gradient(90deg,var(--cyan),var(--magenta)); border:none; color:#04121a; font-weight:700;
+  }
+  .btn.primary:hover{box-shadow:0 0 18px rgba(255,45,149,.5);}
+  .btn.ghost{border-style:dashed; color:var(--muted);}
+  .btn.ghost:hover{color:var(--red); border-color:var(--red); box-shadow:0 0 12px rgba(255,84,112,.3);}
+
+  /* ===== Layout ===== */
+  main{flex:1; display:grid; grid-template-columns:320px 1fr 320px; gap:14px; padding:14px; min-height:0;}
+
+  .col{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; min-height:0;}
+  .col-head{
+    padding:12px 16px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px;
+    letter-spacing:1px; display:flex; align-items:center; gap:8px; background:var(--bg2);
+  }
+  .col-head .dot{width:9px; height:9px; border-radius:50%; box-shadow:0 0 8px currentColor;}
+  .col-body{flex:1; overflow-y:auto; padding:12px; min-height:0;}
+
+  /* ===== Library (left) ===== */
+  .cat{margin-bottom:14px;}
+  .cat-btn{
+    width:100%; text-align:left; cursor:pointer; font-family:var(--font-ui); font-weight:700;
+    font-size:13px; letter-spacing:.5px; color:var(--ink); background:var(--panel2);
+    border:1px solid var(--line2); border-radius:9px; padding:10px 12px; display:flex; align-items:center; gap:8px;
+    transition:.15s;
+  }
+  .cat-btn:hover{border-color:var(--cat-c,var(--cyan));}
+  .cat-btn .tag{font-size:10px; color:var(--cat-c,var(--cyan)); font-weight:700;}
+  .cat-btn .arrow{margin-left:auto; transition:.2s; color:var(--dim);}
+  .cat.open .cat-btn .arrow{transform:rotate(90deg);}
+  .cat-body{display:none; padding:10px 4px 4px;}
+  .cat.open .cat-body{display:block;}
+  .dim{margin-bottom:10px;}
+  .dim-name{font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:.5px; font-weight:600;}
+  .dim-name b{color:var(--ink); font-weight:700;}
+  .opts{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{
+    cursor:grab; user-select:none; font-size:12px; font-weight:500;
+    padding:6px 10px; border-radius:20px; border:1px solid var(--line2);
+    background:var(--bg2); color:var(--ink); transition:.13s;
+  }
+  .chip:hover{border-color:var(--cat-c,var(--cyan)); box-shadow:0 0 10px rgba(34,211,238,.25); transform:translateY(-1px);}
+  .chip.slider-chip{border-style:dashed; color:var(--amber); border-color:rgba(255,176,32,.4);}
+  .chip.param-chip::after{content:" ▸"; color:var(--muted);}
+  .chip.in-pot{opacity:.45; border-color:var(--cat-c,var(--cyan)); cursor:default;}
+
+  /* ===== Pot (center) ===== */
+  .pot-col{background:transparent; border:none;}
+  .pot-wrap{
+    flex:1; min-height:0; position:relative; border:1px solid var(--line2); border-radius:20px;
+    background:
+      radial-gradient(140% 90% at 50% 115%, rgba(34,211,238,.10), transparent 55%),
+      radial-gradient(140% 90% at 50% -15%, rgba(255,45,149,.08), transparent 55%),
+      var(--panel);
+    overflow:hidden; display:flex; flex-direction:column;
+  }
+  .pot-rim{height:16px; background:linear-gradient(180deg,#1c2a44,transparent); }
+  .pot-lip{
+    height:7px; border-radius:8px; margin:0 10px;
+    background:linear-gradient(90deg,var(--cyan),var(--magenta),var(--purple));
+    box-shadow:0 0 16px rgba(34,211,238,.4);
+  }
+  .pot-head{
+    padding:14px 18px 6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .pot-title{font-family:var(--font-pixel); font-size:11px; letter-spacing:1px; color:var(--ink);}
+  .pot-count{font-size:12px; color:var(--muted);}
+  .pot-drop{
+    flex:1; margin:8px 14px 14px; border:1.5px dashed var(--line2); border-radius:14px;
+    padding:14px; overflow-y:auto; min-height:120px; display:flex; flex-wrap:wrap;
+    align-content:flex-start; gap:10px; transition:.15s; position:relative;
+  }
+  .pot-drop.dragover{border-color:var(--cyan); background:rgba(34,211,238,.06); box-shadow:inset 0 0 30px rgba(34,211,238,.12);}
+  .pot-empty{width:100%; text-align:center; color:var(--dim); font-size:13px; padding:30px 0; letter-spacing:1px;}
+  .pot-empty .big{font-family:var(--font-pixel); font-size:11px; color:var(--muted); display:block; margin-bottom:10px; line-height:1.8;}
+
+  /* ingredient card in pot */
+  .ing{
+    position:relative; background:var(--panel2); border:1px solid var(--line2); border-radius:10px;
+    padding:8px 30px 8px 12px; font-size:13px; font-weight:600; min-width:110px;
+    animation:pop .18s ease;
+  }
+  @keyframes pop{from{transform:scale(.7); opacity:0;} to{transform:scale(1); opacity:1;}}
+  .ing .cat-tag{display:block; font-size:9px; font-weight:700; color:var(--cat-c,var(--cyan)); letter-spacing:1px; margin-bottom:2px;}
+  .ing .x{position:absolute; top:4px; right:6px; cursor:pointer; color:var(--dim); font-size:14px; line-height:1; padding:2px 4px;}
+  .ing .x:hover{color:var(--red);}
+  .ing.warn{border-color:var(--amber); box-shadow:0 0 10px rgba(255,176,32,.25);}
+  .ing.conflict{border-color:var(--red); box-shadow:0 0 12px rgba(255,84,112,.35);}
+  .param-row{display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;}
+  .param-opt{font-size:10px; cursor:pointer; padding:3px 8px; border-radius:12px; border:1px solid var(--line2); color:var(--muted); background:var(--bg2);}
+  .param-opt.on{border-color:var(--green); color:var(--green); box-shadow:0 0 8px rgba(57,255,136,.3);}
+  .slider-card{width:180px;}
+  .slider-card input[type=range]{width:100%; accent-color:var(--amber); margin-top:6px;}
+  .slider-card .val{font-size:11px; color:var(--amber); font-weight:700; margin-top:4px;}
+
+  /* ===== Preview (right) ===== */
+  .pitch-box{
+    background:var(--bg2); border:1px solid var(--line2); border-radius:10px; padding:12px; margin-bottom:12px;
+  }
+  .pitch-box .label{font-size:10px; color:var(--muted); letter-spacing:1px; margin-bottom:6px; font-weight:700;}
+  .pitch{font-size:14px; line-height:1.6; color:var(--ink);}
+  .pitch .hl{color:var(--cyan); font-weight:700;}
+  .meter{margin-bottom:14px;}
+  .meter .label{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:6px; font-weight:600;}
+  .bar{height:8px; border-radius:4px; background:var(--bg2); overflow:hidden; border:1px solid var(--line);}
+  .bar i{display:block; height:100%; background:linear-gradient(90deg,var(--cyan),var(--green)); transition:width .3s;}
+  .warn-item{
+    display:flex; gap:8px; align-items:flex-start; padding:8px 10px; border-radius:8px; margin-bottom:8px;
+    border:1px solid; font-size:12px; line-height:1.5;
+  }
+  .warn-item.soft{border-color:rgba(255,176,32,.4); background:rgba(255,176,32,.06); color:#ffe1a8;}
+  .warn-item.hard{border-color:rgba(255,84,112,.45); background:rgba(255,84,112,.08); color:#ffb3c0;}
+  .warn-item .w{font-weight:800; flex-shrink:0;}
+  .sec-title{font-size:11px; color:var(--muted); letter-spacing:1px; margin:14px 0 8px; font-weight:700; border-bottom:1px solid var(--line); padding-bottom:5px;}
+
+  /* ===== Modal ===== */
+  .overlay{position:fixed; inset:0; background:rgba(4,8,16,.8); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:50; padding:30px;}
+  .overlay.show{display:flex;}
+  .modal{
+    width:min(760px,100%); max-height:88vh; overflow-y:auto; background:var(--panel); border:1px solid var(--line2);
+    border-radius:16px; padding:26px; box-shadow:0 0 60px rgba(34,211,238,.15);
+  }
+  .modal h2{font-family:var(--font-pixel); font-size:14px; letter-spacing:1px; margin-bottom:18px; color:var(--cyan);}
+  .modal h3{font-size:13px; margin:20px 0 8px; color:var(--ink); letter-spacing:.5px;}
+  .modal h3 .n{color:var(--cyan); margin-right:6px;}
+  .modal p,.modal li{font-size:13px; line-height:1.7; color:#c9d8ef;}
+  .modal ul{padding-left:20px; margin:6px 0;}
+  .modal .pitch{font-size:15px; margin:6px 0; padding:12px; background:var(--bg2); border-left:3px solid var(--magenta); border-radius:6px;}
+  .modal .close{float:right; cursor:pointer; color:var(--muted); font-size:20px; line-height:1;}
+  .modal .close:hover{color:var(--red);}
+  .tag-pill{display:inline-block; font-size:10px; padding:2px 8px; border-radius:12px; background:var(--panel2); border:1px solid var(--line2); color:var(--cyan); margin:2px 2px 0 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">GAME RECIPE POT<small>配菜锅 · 游戏方向构思器</small></div>
+    <div class="toolbar">
+      <button class="btn" id="recipeBtn">📋 配方模板</button>
+      <button class="btn primary" id="cookBtn">🔥 出锅 · 生成规划手册</button>
+      <button class="btn ghost" id="clearBtn">清空锅</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left: library -->
+    <div class="col">
+      <div class="col-head"><span class="dot" style="background:var(--cyan);color:var(--cyan)"></span>食材库 · INGREDIENTS</div>
+      <div class="col-body" id="library"></div>
+    </div>
+
+    <!-- Center: pot -->
+    <div class="col pot-col">
+      <div class="pot-wrap">
+        <div class="pot-rim"></div>
+        <div class="pot-lip"></div>
+        <div class="pot-head">
+          <span class="pot-title">🍲 THE POT</span>
+          <span class="pot-count" id="potCount">0 种食材</span>
+          <span class="pot-count" id="potHint" style="margin-left:auto;color:var(--dim)">拖入或点击食材</span>
+        </div>
+        <div class="pot-drop" id="pot"></div>
+      </div>
+    </div>
+
+    <!-- Right: preview -->
+    <div class="col">
+      <div class="col-head"><span class="dot" style="background:var(--magenta);color:var(--magenta)"></span>实时预览 · PREVIEW</div>
+      <div class="col-body" id="preview"></div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+/* ================= DATA ================= */
+const CATS = {
+  gameplay:  {name:'A · 玩法', c:'#22d3ee'},
+  experience:{name:'B · 体验与情绪', c:'#ff2d95'},
+  art:       {name:'C · 美术与视听', c:'#a06bff'},
+  narrative: {name:'D · 叙事与世界观', c:'#ffb020'},
+  business:  {name:'E · 商业与市场', c:'#39ff88'},
+  tech:      {name:'F · 技术与在线', c:'#ff6b35'},
+};
+
+const DIMS = [
+  // A 玩法
+  {id:'genre',name:'玩法类型',cat:'gameplay',mode:'single',opts:[
+    {n:'肉鸽 Roguelike',p:['永久死亡','局外继承']},{n:'动作 ACT'},{n:'射击 STG'},{n:'策略 SLG'},
+    {n:'模拟经营'},{n:'放置挂机 Idle'},{n:'解谜'},{n:'塔防 TD'},{n:'卡牌 DBG/CCG'},
+    {n:'角色扮演 RPG'},{n:'生存建造'},{n:'平台跳跃'},{n:'音乐节奏'},{n:'竞速'},{n:'大逃杀'}]},
+  {id:'coreloop',name:'核心循环',cat:'gameplay',mode:'single',opts:[
+    {n:'战斗→掉落→成长'},{n:'采集→建造→扩张'},{n:'探索→解谜→推进'},{n:'匹配→对战→升段'}]},
+  {id:'input',name:'操作方式',cat:'gameplay',mode:'multi',opts:[
+    {n:'单指点击'},{n:'拖拽'},{n:'虚拟摇杆'},{n:'键盘鼠标'},{n:'手柄'},{n:'体感'}]},
+  {id:'perspective',name:'视角',cat:'gameplay',mode:'single',opts:[
+    {n:'2D横版'},{n:'2D俯视'},{n:'2.5D等距'},{n:'3D第一人称'},{n:'3D第三人称'},{n:'3D上帝视角'}]},
+  {id:'pacing',name:'节奏',cat:'gameplay',mode:'single',opts:[
+    {n:'即时制'},{n:'回合制'},{n:'半即时 ATB'},{n:'实时可暂停'}]},
+  {id:'progression',name:'成长系统',cat:'gameplay',mode:'multi',opts:[
+    {n:'局内成长'},{n:'局外成长 Meta'},{n:'角色等级'},{n:'装备词条'},{n:'天赋树'},{n:'收集图鉴'}]},
+  {id:'difficulty',name:'难度定位',cat:'gameplay',mode:'slider',slider:{min:0,max:10,step:1,regions:[{to:3,label:'休闲解压'},{to:7,label:'中度挑战'},{to:10,label:'硬核受苦'}]}},
+  // B 体验
+  {id:'emotion',name:'情绪目标',cat:'experience',mode:'multi',opts:[
+    {n:'解压放松'},{n:'爽快感'},{n:'成就感'},{n:'治愈温暖'},{n:'紧张刺激'},{n:'恐怖惊悚'},{n:'热血燃'},{n:'探索好奇'},{n:'社交陪伴'},{n:'烧脑'}]},
+  {id:'intensity',name:'节奏强度',cat:'experience',mode:'slider',slider:{min:0,max:10,step:1,regions:[{to:3,label:'慢节奏禅意'},{to:7,label:'中速'},{to:10,label:'快节奏高密度'}]}},
+  {id:'session',name:'单局时长',cat:'experience',mode:'slider',slider:{min:0,max:3,step:1,stops:[{v:0,label:'＜3分钟'},{v:1,label:'3–10分钟'},{v:2,label:'10–30分钟'},{v:3,label:'30分钟+'}]}},
+  {id:'total',name:'总游玩时长',cat:'experience',mode:'single',opts:[{n:'数小时'},{n:'10–30小时'},{n:'50小时+'},{n:'无限服务型'}]},
+  // C 美术
+  {id:'artstyle',name:'画风',cat:'art',mode:'single',opts:[
+    {n:'像素',p:['8bit','16bit','32bit']},{n:'手绘卡通'},{n:'低多边形 Low-poly'},{n:'赛璐璐 Cel-shading'},
+    {n:'写实'},{n:'剪纸'},{n:'黏土'},{n:'极简几何'},{n:'水墨国风'},{n:'厚涂'}]},
+  {id:'color',name:'色彩基调',cat:'art',mode:'single',opts:[
+    {n:'明亮鲜艳'},{n:'柔和马卡龙'},{n:'暗黑压抑'},{n:'复古怀旧'},{n:'高对比霓虹'},{n:'黑白极简'}]},
+  {id:'music',name:'音乐风格',cat:'art',mode:'single',opts:[
+    {n:'8-bit 芯片'},{n:'电子合成'},{n:'管弦史诗'},{n:'轻音乐氛围'},{n:'爵士'},{n:'摇滚'}]},
+  {id:'present',name:'叙事呈现',cat:'art',mode:'single',opts:[
+    {n:'文字剧情'},{n:'CG动画'},{n:'漫画分镜'},{n:'纯玩法无叙事'}]},
+  // D 叙事
+  {id:'theme',name:'题材背景',cat:'narrative',mode:'single',opts:[
+    {n:'科幻'},{n:'奇幻'},{n:'末世废土'},{n:'都市现代'},{n:'历史古风'},{n:'神话传说'},
+    {n:'赛博朋克'},{n:'蒸汽朋克'},{n:'克苏鲁'},{n:'校园日常'},{n:'东方武侠'},{n:'西方魔幻'}]},
+  {id:'narrative',name:'叙事方式',cat:'narrative',mode:'single',opts:[
+    {n:'线性主线'},{n:'碎片化 魂系'},{n:'多结局分支'},{n:'纯玩法无剧情'},{n:'开放沙盒'}]},
+  {id:'protagonist',name:'主角设定',cat:'narrative',mode:'single',opts:[
+    {n:'固定主角'},{n:'自建角色'},{n:'无主角'}]},
+  // E 商业
+  {id:'platform',name:'目标平台',cat:'business',mode:'multi',opts:[
+    {n:'PC Steam/Epic'},{n:'主机 NS/PS/Xbox'},{n:'移动端 iOS/Android'},{n:'Web/H5'},{n:'多平台'}]},
+  {id:'monetization',name:'商业模式',cat:'business',mode:'single',opts:[
+    {n:'买断制'},{n:'免费+内购 F2P'},{n:'免费+广告'},{n:'订阅制'},{n:'DLC/季票'}]},
+  {id:'audience',name:'目标人群',cat:'business',mode:'multi',opts:[
+    {n:'泛大众休闲'},{n:'核心玩家'},{n:'女性向'},{n:'儿童'},{n:'青少年'},{n:'上班族碎片'},{n:'主播/内容创作者'}]},
+  {id:'region',name:'销售地区',cat:'business',mode:'multi',opts:[
+    {n:'全球发行'},{n:'中国大陆'},{n:'欧美'},{n:'日韩'},{n:'东南亚'},{n:'拉美'}]},
+  // F 技术
+  {id:'engine',name:'引擎',cat:'tech',mode:'single',opts:[
+    {n:'Unity'},{n:'Godot'},{n:'Unreal'},{n:'Cocos'},{n:'自研'}]},
+  {id:'multiplayer',name:'联网模式',cat:'tech',mode:'single',opts:[
+    {n:'纯单机'},{n:'本地多人'},{n:'在线合作'},{n:'在线对战'},{n:'MMO'}]},
+];
+
+const CONFLICTS = [
+  {a:'像素',b:'3D第一人称',level:'hard',note:'技术矛盾：像素与第一人称3D不兼容'},
+  {a:'像素',b:'3D第三人称',level:'hard',note:'技术矛盾：像素与第三人称3D不兼容'},
+  {a:'像素',b:'3D上帝视角',level:'soft',note:'像素配3D俯视少见'},
+  {a:'写实',b:'2D横版',level:'soft',note:'写实风格通常搭配3D视角'},
+  {a:'写实',b:'2D俯视',level:'soft',note:'写实风格通常搭配3D视角'},
+  {a:'放置挂机 Idle',b:'快节奏高密度',level:'soft',note:'挂机与快节奏矛盾'},
+  {a:'解压放松',b:'恐怖惊悚',level:'soft',note:'情绪目标互相矛盾'},
+  {a:'治愈温暖',b:'恐怖惊悚',level:'soft',note:'情绪目标互相矛盾'},
+  {a:'解压放松',b:'紧张刺激',level:'soft',note:'情绪目标互相矛盾'},
+  {a:'纯玩法无叙事',b:'线性主线',level:'soft',note:'叙事方式矛盾'},
+  {a:'纯玩法无剧情',b:'线性主线',level:'soft',note:'叙事方式矛盾'},
+  {a:'儿童',b:'恐怖惊悚',level:'hard',note:'内容分级矛盾：儿童向不宜惊悚'},
+];
+
+const RECIPES = [
+  {name:'🎮 Steam 独立肉鸽', recipe:{
+    genre:{name:'肉鸽 Roguelike', type:'param', param:'局外继承'}, perspective:{name:'2D横版'},
+    artstyle:{name:'像素', type:'param', param:'16bit'},
+    progression:[{name:'局内成长'},{name:'局外成长 Meta'}], difficulty:{type:'slider', value:5},
+    emotion:[{name:'爽快感'},{name:'成就感'}], session:{type:'slider', value:2},
+    platform:[{name:'PC Steam/Epic'}], monetization:{name:'买断制'}, region:[{name:'全球发行'}],
+    audience:[{name:'核心玩家'}], engine:{name:'Godot'}, multiplayer:{name:'纯单机'}}},
+  {name:'🌿 休闲解压手游', recipe:{
+    genre:{name:'放置挂机 Idle'}, emotion:[{name:'解压放松'},{name:'治愈温暖'}],
+    session:{type:'slider', value:0}, platform:[{name:'移动端 iOS/Android'}],
+    monetization:{name:'免费+广告'}, audience:[{name:'上班族碎片'}], region:[{name:'全球发行'}],
+    artstyle:{name:'极简几何'}, engine:{name:'Unity'}, intensity:{type:'slider', value:1}}},
+  {name:'👾 像素银河恶魔城', recipe:{
+    genre:{name:'平台跳跃'}, perspective:{name:'2D横版'}, artstyle:{name:'像素', type:'param', param:'16bit'},
+    theme:{name:'科幻'}, narrative:{name:'碎片化 魂系'}, difficulty:{type:'slider', value:8},
+    engine:{name:'Unity'}, platform:[{name:'PC Steam/Epic'},{name:'主机 NS/PS/Xbox'}],
+    monetization:{name:'买断制'}, audience:[{name:'核心玩家'}]}},
+];
+
+/* ================= STATE ================= */
+const KEY = 'game-recipe-pot-v1';
+let state = { selections:{} };
+try{ const s = localStorage.getItem(KEY); if(s) state = JSON.parse(s); }catch(e){}
+
+function dimById(id){ return DIMS.find(d=>d.id===id); }
+function catOf(id){ return CATS[dimById(id).cat]; }
+function sliderLabel(d,v){
+  const s=d.slider;
+  if(s.stops){ const st=s.stops.find(x=>x.v===v); return st?st.label:''; }
+  for(const r of s.regions){ if(v<=r.to) return r.label; }
+  return s.regions[s.regions.length-1].label;
+}
+function isSliderDim(d){ return d.mode==='slider'; }
+
+function picksOf(dimId){
+  const s = state.selections[dimId];
+  if(!s) return [];
+  return Array.isArray(s)? s : [s];
+}
+function pickName(dimId, joinChar='·'){
+  const ps = picksOf(dimId);
+  if(!ps.length) return null;
+  return ps.map(p=> p.type==='slider' ? sliderLabel(dimById(dimId), p.value) : p.name).join(joinChar);
+}
+
+/* ================= ACTIONS ================= */
+function addOption(dim, opt){
+  const d = dimById(dim);
+  const key = d.id;
+  if(isSliderDim(d)){
+    state.selections[key] = {name:d.name, type:'slider', value:Math.round((d.slider.min+d.slider.max)/2)};
+  } else {
+    const pick = {name:opt.n, type:opt.p?'param':null, param:(opt.p?opt.p[0]:undefined)};
+    if(d.mode==='multi'){
+      const arr = picksOf(key);
+      if(!arr.some(x=>x.name===pick.name)){ state.selections[key]=[...arr, pick]; }
+      else { state.selections[key] = arr.filter(x=>x.name!==pick.name); if(!state.selections[key].length) delete state.selections[key]; }
+    } else {
+      // single: toggle
+      if(state.selections[key] && state.selections[key].name===pick.name){ delete state.selections[key]; }
+      else { state.selections[key]=pick; }
+    }
+  }
+  save(); render();
+}
+function removePick(dimId, name){
+  const d = dimById(dimId);
+  const ps = picksOf(dimId);
+  if(isSliderDim(d)){ delete state.selections[dimId]; }
+  else if(d.mode==='multi'){
+    const arr = ps.filter(x=>x.name!==name);
+    if(arr.length) state.selections[dimId]=arr; else delete state.selections[dimId];
+  } else { delete state.selections[dimId]; }
+  save(); render();
+}
+function setParam(dimId, name, param){
+  const d=dimById(dimId); const ps=picksOf(dimId);
+  if(Array.isArray(state.selections[dimId])){
+    state.selections[dimId] = ps.map(x=> x.name===name? {...x,param}:x );
+  } else if(state.selections[dimId] && state.selections[dimId].name===name){
+    state.selections[dimId] = {...state.selections[dimId], param};
+  }
+  save(); render();
+}
+function setSlider(dimId, value){
+  const d=dimById(dimId); const ps=picksOf(dimId);
+  if(Array.isArray(state.selections[dimId])){
+    state.selections[dimId] = ps.map(x=> ({...x, value:+value}));
+  } else if(state.selections[dimId]){
+    state.selections[dimId] = {...state.selections[dimId], value:+value};
+  }
+  save(); render();
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function clearPot(){ state = {selections:{}}; save(); render(); }
+
+/* ================= CONFLICTS ================= */
+function collectActiveNames(){
+  const set = new Set();
+  for(const d of DIMS){
+    const ps = picksOf(d.id);
+    for(const p of ps){
+      if(p.type==='slider'){
+        const lbl = sliderLabel(d, p.value);
+        if(d.id==='difficulty' || d.id==='intensity') set.add(lbl);
+      } else {
+        set.add(p.name);
+      }
+    }
+  }
+  return set;
+}
+function getConflicts(){
+  const active = collectActiveNames();
+  const res = [];
+  for(const c of CONFLICTS){ if(active.has(c.a) && active.has(c.b)) res.push(c); }
+  // slider-based extra rules
+  const diff = state.selections['difficulty'];
+  const emo = picksOf('emotion').map(p=>p.name);
+  if(diff && diff.type==='slider'){
+    if(diff.value<=3 && emo.some(n=>['恐怖惊悚','紧张刺激'].includes(n)))
+      res.push({a:'难度·休闲',b:'情绪',level:'soft',note:'休闲难度与惊悚/紧张情绪冲突'});
+    if(diff.value>=8 && emo.some(n=>['解压放松','治愈温暖'].includes(n)))
+      res.push({a:'难度·硬核',b:'情绪',level:'soft',note:'硬核难度与解压/治愈情绪冲突'});
+  }
+  return res;
+}
+
+/* ================= RENDER ================= */
+function render(){ renderLibrary(); renderPot(); renderPreview(); }
+
+function renderLibrary(){
+  const el = document.getElementById('library');
+  const cats = Object.keys(CATS);
+  el.innerHTML = cats.map(cid=>{
+    const c = CATS[cid];
+    const dims = DIMS.filter(d=>d.cat===cid);
+    return `<div class="cat open" data-cat="${cid}">
+      <div class="cat-btn" style="--cat-c:${c.c}" onclick="toggleCat(this)">
+        <span class="tag">${c.name.split(' · ')[0]}</span>${c.name.split(' · ')[1]}
+        <span class="arrow">▶</span>
+      </div>
+      <div class="cat-body">
+        ${dims.map(d=>{
+          if(isSliderDim(d)){
+            const active = !!state.selections[d.id];
+            return `<div class="dim">
+              <div class="dim-name"><b>${d.name}</b> · 强度滑杆</div>
+              <div class="opts">
+                <span class="chip slider-chip ${active?'in-pot':''}" draggable="true" data-dim="${d.id}" data-slider="1"
+                  ondragstart="dragStart(event,'${d.id}','')">${d.name}</span>
+              </div>
+            </div>`;
+          }
+          const activeNames = picksOf(d.id).map(p=>p.name);
+          return `<div class="dim">
+            <div class="dim-name"><b>${d.name}</b>${d.mode==='multi'?' · 可多选':' · 单选'}</div>
+            <div class="opts">
+              ${d.opts.map(o=>{
+                const active = activeNames.includes(o.n);
+                const cls = ['chip', o.p?'param-chip':'', active?'in-pot':''].join(' ');
+                return `<span class="${cls}" draggable="true" data-dim="${d.id}" data-opt="${o.n}"
+                  ondragstart="dragStart(event,'${d.id}','${o.n.replace(/'/g,"\\'")}')">${o.n}</span>`;
+              }).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderPot(){
+  const pot = document.getElementById('pot');
+  const cards = [];
+  for(const d of DIMS){
+    const ps = picksOf(d.id);
+    for(const p of ps){
+      const c = catOf(d.id);
+      if(p.type==='slider'){
+        cards.push(`<div class="ing slider-card" style="--cat-c:${c.c}">
+          <span class="x" onclick="removePick('${d.id}')">✕</span>
+          <span class="cat-tag">${c.name}</span>${d.name}
+          <input type="range" min="${d.slider.min}" max="${d.slider.max}" step="${d.slider.step}"
+            value="${p.value}" oninput="setSlider('${d.id}', this.value)">
+          <div class="val">${sliderLabel(d, p.value)}</div>
+        </div>`);
+      } else {
+        const isConflict = getConflicts().some(c=>c.a===p.name||c.b===p.name);
+        cards.push(`<div class="ing ${isConflict?'warn':''}" style="--cat-c:${c.c}">
+          <span class="x" onclick="removePick('${d.id}','${p.name.replace(/'/g,"\\'")}')">✕</span>
+          <span class="cat-tag">${c.name}</span>${p.name}${p.type==='param'?' · '+p.param:''}
+          ${p.type==='param'?`<div class="param-row">${dimById(d.id).opts.find(o=>o.n===p.name).p.map(pv=>
+            `<span class="param-opt ${p.param===pv?'on':''}" onclick="setParam('${d.id}','${p.name.replace(/'/g,"\\'")}','${pv}')">${pv}</span>`).join('')}</div>`:''}
+        </div>`);
+      }
+    }
+  }
+  pot.innerHTML = cards.length? cards.join('')
+    : `<div class="pot-empty"><span class="big">★ 把食材拖进来 ★</span>从左侧「食材库」拖拽 / 点击选项，<br>像配菜一样熬出你的游戏。</div>`;
+  document.getElementById('potCount').textContent = cards.length + ' 种食材';
+}
+
+function generatePitch(){
+  const art = pickName('artstyle'), persp = pickName('perspective'), genre = pickName('genre');
+  const emotion = pickName('emotion'), session = pickName('session');
+  const platform = pickName('platform'), biz = pickName('monetization');
+  const audience = pickName('audience'), region = pickName('region');
+  const theme = pickName('theme');
+  const head = [art?art+'风':'', persp].filter(Boolean).join('');
+  let s = '一款';
+  s += head? `<span class="hl">${head}</span>`:'';
+  s += ` <span class="hl">${genre||'冒险'}</span>游戏`;
+  if(theme) s += `，题材<span class="hl">${theme}</span>`;
+  s += `，主打<span class="hl">${emotion||'爽快'}</span>体验`;
+  if(session) s += `，单局<span class="hl">${session}</span>`;
+  s += `，登陆<span class="hl">${platform||'Steam'}</span>（${biz||'买断制'}）`;
+  s += `，面向<span class="hl">${audience||'休闲玩家'}</span>`;
+  if(region) s += `，${region}发行`;
+  s += '。';
+  return s;
+}
+
+function renderPreview(){
+  const el = document.getElementById('preview');
+  const totalDims = DIMS.length;
+  const filled = DIMS.filter(d=>picksOf(d.id).length).length;
+  const pct = Math.round(filled/totalDims*100);
+  const conflicts = getConflicts();
+  let warnHtml = conflicts.length? conflicts.map(c=>`
+    <div class="warn-item ${c.level}"><span class="w">${c.level==='hard'?'⛔':'⚠'}</span><span><b>${c.a} × ${c.b}</b><br>${c.note}</span></div>`).join('')
+    : '<div class="pitch-box" style="border-color:rgba(57,255,136,.3)"><span style="color:var(--green);font-size:12px">✔ 当前组合自洽，无冲突</span></div>';
+  el.innerHTML = `
+    <div class="pitch-box">
+      <div class="label">一句话定位 · ELEVATOR PITCH</div>
+      <div class="pitch">${filled? generatePitch() : '<span style="color:var(--dim)">选几样食材，这里会实时生成一句话定位。</span>'}</div>
+    </div>
+    <div class="meter">
+      <div class="label"><span>菜谱完成度</span><span>${filled} / ${totalDims} 维度</span></div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+    </div>
+    <div class="sec-title">冲突检测 · CONFLICT</div>
+    ${warnHtml}`;
+}
+
+/* ================= DRAG & DROP ================= */
+let dragPayload = null;
+function dragStart(e, dimId, optName){ dragPayload={dimId, optName}; e.dataTransfer.setData('text/plain', ''); e.dataTransfer.effectAllowed='copy'; }
+const potEl = ()=>document.getElementById('pot');
+document.addEventListener('dragover', e=>{ const p=document.getElementById('pot'); if(p.contains(e.target) || p===e.target){ e.preventDefault(); p.classList.add('dragover'); }});
+document.addEventListener('dragleave', e=>{ if(!document.getElementById('pot').contains(e.relatedTarget)) document.getElementById('pot').classList.remove('dragover'); });
+document.addEventListener('drop', e=>{
+  const p=document.getElementById('pot'); p.classList.remove('dragover');
+  if(p===e.target || p.contains(e.target)){
+    e.preventDefault();
+    if(dragPayload){
+      const d = dimById(dragPayload.dimId);
+      if(isSliderDim(d)){ addOption(d.id); }
+      else { const o = d.opts.find(x=>x.n===dragPayload.optName); if(o) addOption(d.id, o); }
+    }
+  }
+});
+
+/* ================= MANUAL ================= */
+function generateManual(){
+  const g = id=>pickName(id);
+  const art=g('artstyle'), persp=g('perspective'), genre=g('genre')||'冒险';
+  const emotion=g('emotion')||'爽快', coreloop=g('coreloop')||'探索→推进', input=g('input')||'键鼠';
+  const progression=g('progression')||'局内成长', difficulty=g('difficulty')||'中度';
+  const session=g('session')||'10–30分钟', platform=g('platform')||'Steam';
+  const biz=g('monetization')||'买断制', region=g('region')||'全球', audience=g('audience')||'休闲玩家';
+  const theme=g('theme'), narrative=g('narrative')||'纯玩法', engine=g('engine')||'Godot';
+  const mp=g('multiplayer')||'纯单机', color=g('color')||'明亮', music=g('music')||'轻音乐';
+  const pitch = generatePitch();
+  const conflicts = getConflicts();
+
+  const tags = [art,persp,genre,theme,platform,biz,audience,region,engine,mp].filter(Boolean).map(t=>`<span class="tag-pill">${t}</span>`).join('');
+
+  return `
+  <span class="close" onclick="closeModal()">✕</span>
+  <h2>🎮 游戏产品规划手册</h2>
+  <div class="pitch">${pitch}</div>
+  <div>${tags}</div>
+
+  <h3><span class="n">01</span>核心玩法 CORE GAMEPLAY</h3>
+  <ul>
+    <li><b>类型</b>：${genre}（${persp||'视角待定'} · ${g('pacing')||'即时制'}）</li>
+    <li><b>核心循环</b>：${coreloop}，配合「${progression}」成长形成驱动力。</li>
+    <li><b>操作</b>：${input}；<b>联网</b>：${mp}。</li>
+    <li><b>情绪目标</b>：${emotion}；<b>难度</b>：${difficulty}。</li>
+    <li><b>时长</b>：单局 ${session}，总时长 ${g('total')||'10–30小时'}。</li>
+  </ul>
+
+  <h3><span class="n">02</span>最小 MVP Demo 范围</h3>
+  <ul>
+    <li><b>第一档 · 可玩原型</b>：1 个可${input}的角色；核心循环「${coreloop}」跑通；最基础的胜负/结算判定；美术用免费素材占位。</li>
+    <li><b>第二档 · 核心体验</b>：手感与打击/操作反馈打磨；${progression}系统最小版本；3–5 个关卡或一个随机生成器。</li>
+    <li><b>第三档 · 对外 Demo</b>：可录屏/可试玩的稳定版本；商店页物料（截图/宣传片/文案）；核心卖点一句话可讲清。</li>
+  </ul>
+
+  <h3><span class="n">03</span>物料清单 MATERIALS</h3>
+  <ul>
+    <li><b>美学</b>：${art||'待定'}风格的主角/敌人/场景素材、UI 图标；${color}配色；${music}音乐与音效。</li>
+    <li><b>玩法</b>：${genre}核心系统、${coreloop}循环、${progression}成长、关卡/数值表。</li>
+    <li><b>技术</b>：引擎 ${engine}；适配 ${platform}；联网 ${mp}。</li>
+    <li><b>商业</b>：${biz}；定价与商店页（截图/宣传片/文案）；${region}本地化。</li>
+    <li><b>市场</b>：目标人群 ${audience}；卖点提炼（见一句话定位）；竞品对标。</li>
+  </ul>
+
+  <h3><span class="n">04</span>风险与备选 RISK</h3>
+  ${conflicts.length? conflicts.map(c=>`<li style="color:#ffb3c0">⚠ ${c.a} × ${c.b}：${c.note} —— 建议二选一或调整定位。</li>`).join('') : '<li style="color:#9be8b0">✔ 当前组合无冲突，可进入落地阶段。</li>'}
+  <div style="margin-top:22px;text-align:right">
+    <button class="btn" onclick="copyManual()">📋 复制全文</button>
+    <button class="btn primary" onclick="closeModal()">完成</button>
+  </div>`;
+}
+function copyManual(){
+  const txt = document.getElementById('modal').innerText;
+  navigator.clipboard.writeText(txt).then(()=>alert('已复制到剪贴板'));
+}
+function openModal(){ document.getElementById('modal').innerHTML = generateManual(); document.getElementById('overlay').classList.add('show'); }
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+document.getElementById('overlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
+
+/* ================= RECIPES ================= */
+function applyRecipe(recipe){
+  state.selections = JSON.parse(JSON.stringify(recipe));
+  save(); render();
+}
+function showRecipes(){
+  const list = RECIPES.map((r,i)=>`<div style="padding:8px 10px;border:1px solid var(--line2);border-radius:8px;margin-bottom:8px;cursor:pointer;font-size:13px" onclick="applyRecipe(RECIPES[${i}].recipe);closeModal()">${r.name}<span style="color:var(--dim);font-size:11px;float:right">一键填入 →</span></div>`).join('');
+  document.getElementById('modal').innerHTML = `<span class="close" onclick="closeModal()">✕</span><h2>📋 配方模板</h2><div style="margin-bottom:8px;color:var(--muted);font-size:12px">选择一个常见组合作为起点，填入后可继续调整。</div>${list}`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+/* ================= WIRE ================= */
+function toggleCat(btn){ btn.parentElement.classList.toggle('open'); }
+document.getElementById('library').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip');
+  if(!chip) return;
+  const dimId = chip.dataset.dim;
+  const d = dimById(dimId);
+  if(chip.dataset.slider!==undefined){ addOption(dimId); return; }
+  const o = d.opts.find(x=>x.n===chip.dataset.opt);
+  if(o) addOption(dimId, o);
+});
+document.getElementById('cookBtn').onclick = openModal;
+document.getElementById('clearBtn').onclick = clearPot;
+document.getElementById('recipeBtn').onclick = showRecipes;
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+render();
+</script>
+</body>
+</html>
